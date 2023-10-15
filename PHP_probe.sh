@@ -16,19 +16,27 @@ if [ "$web_server_choice" != "1" ] && [ "$web_server_choice" != "2" ]; then
     exit 1
 fi
 
-# Prompt for the port
-read -p "Enter the desired port number (default is 8080): " port
-port=${port:-8080}
+# Prompt for the PHP version
+echo "Choose a PHP version to install:"
+echo "1. PHP 7.4 (recommended)"
+echo "2. PHP 8.0"
+read -p "Enter the number (1 or 2): " php_version_choice
 
-# Check if PHP is installed
-if ! command -v php &> /dev/null; then
-    echo "PHP is not installed. Please install PHP before continuing."
-    exit 1
+# Validate the PHP version choice
+if [ "$php_version_choice" != "1" ] && [ "$php_version_choice" != "2" ]; then
+    echo "Invalid choice. Installing PHP 7.4 by default."
+    php_version_choice="1"
 fi
 
-# Install the selected web server (Nginx or Apache)
+# Set PHP version based on the choice
+if [ "$php_version_choice" = "1" ]; then
+    php_version="7.4"
+else
+    php_version="8.0"
+fi
+
+# Check if the selected web server is installed
 if [ "$web_server_choice" = "1" ]; then
-    # Install Nginx
     if ! command -v nginx &> /dev/null; then
         echo "Nginx is not installed. Installing Nginx..."
         sudo apt update
@@ -36,13 +44,19 @@ if [ "$web_server_choice" = "1" ]; then
     fi
     web_server="Nginx"
 else
-    # Install Apache
     if ! command -v apache2 &> /dev/null; then
         echo "Apache is not installed. Installing Apache..."
         sudo apt update
         sudo apt install -y apache2
     fi
     web_server="Apache"
+fi
+
+# Check if PHP is installed
+if ! command -v php$php_version &> /dev/null; then
+    echo "PHP $php_version is not installed. Installing PHP $php_version..."
+    sudo apt update
+    sudo apt install -y php$php_version
 fi
 
 # Create the PHP probe directory
@@ -57,7 +71,7 @@ if [ "$web_server_choice" = "1" ]; then
     # Create an Nginx server block configuration
     sudo tee /etc/nginx/sites-available/probe <<EOF
 server {
-    listen $port;
+    listen 80;
     server_name localhost;
 
     location / {
@@ -75,7 +89,7 @@ EOF
 else
     # Create an Apache virtual host configuration
     sudo tee /etc/apache2/sites-available/probe.conf <<EOF
-<VirtualHost *:$port>
+<VirtualHost *:80>
     ServerAdmin webmaster@localhost
     DocumentRoot /var/www/html
     ErrorLog \${APACHE_LOG_DIR}/error.log
@@ -98,5 +112,5 @@ fi
 
 # Display the access link
 echo
-echo "PHP probe has been installed successfully with $web_server."
-echo "You can access it at: http://your_server_ip:$port/PHP_probe.php"
+echo "PHP probe has been installed successfully with $web_server and PHP $php_version."
+echo "You can access it at: http://your_server_ip/PHP_probe.php"
